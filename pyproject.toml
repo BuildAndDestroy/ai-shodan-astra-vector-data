@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vector-and-llm"
+version = "1.0.0"
+description = "A Python tool for importing Shodan JSON scan results into Qdrant vector database and performing RAG queries"
+readme = "README.md"
+license = {text = "GPL-3.0-or-later"}
+authors = [
+    {name = "BuildAndDestroy", email = "devreap1@gmail.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers", 
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9", 
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
+    "Topic :: Internet"
+]
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.32.0",
+]
+
+[project.optional-dependencies]
+bedrock = [
+    "boto3>=1.40.0"
+]
+dev = [
+    "pytest>=7.0.0",
+    "black>=22.0.0", 
+    "flake8>=4.0.0",
+    "twine>=4.0.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/BuildAndDestroy/ai-shodan-astra-vector-data"
+Repository = "https://github.com/BuildAndDestroy/ai-shodan-astra-vector-data.git"
+Issues = "https://github.com/BuildAndDestroy/ai-shodan-astra-vector-data/issues"
+
+[project.scripts]
+shodan-to-qdrant = "vector_and_llm.tools.shodan_to_qdrant:main"
+llm-rag-shodan = "vector_and_llm.tools.llm_rag_shodan:main"
+
+[tool.black]
+line-length = 100
+target-version = ['py38']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

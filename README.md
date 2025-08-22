@@ -1,58 +1,24 @@
-# Shodan to Qdrant RAG System
+# Vector and LLM: Shodan RAG System
 
-A Python tool for importing Shodan JSON scan results into a Qdrant vector database and performing RAG (Retrieval-Augmented Generation) queries with configurable embedding and LLM backends. This tool enables semantic search and AI-powered analysis of network scan data by converting Shodan results into searchable vector embeddings.
-
-## Features
-
-- **RAG Query System**: Ask natural language questions about your network scan data
-- **Multiple LLM Backends**: Support for Ollama (local) and AWS Bedrock (cloud) language models
-- **Multiple Embedding Backends**: Support for AWS Bedrock (Titan), Ollama (nomic-embed-text), and zero vectors
-- **Multi-Collection Support**: Query across multiple datasets simultaneously for comparative analysis
-- **Batch Processing**: Import multiple Shodan JSON files in a single run
-- **Automatic Collection Management**: Creates Qdrant collections with appropriate vector dimensions
-- **Enhanced Geographic Matching**: Intelligent country name variations for better location searches
-- **Debug Mode**: Comprehensive debugging with pipeline visibility
-- **Progress Tracking**: Real-time import progress with success/error counts
-
-## Prerequisites
-
-### Required Services
-
-1. **Qdrant Vector Database**
-   - Running instance accessible via HTTP
-   - Default: `localhost:6333`
-
-2. **Embedding Service** (choose one):
-   - **Ollama** (recommended for local development)
-   - **AWS Bedrock** (for production/cloud deployments)
-   - **Zero vectors** (for testing without embeddings)
-
-3. **LLM Service** (for RAG queries):
-   - **Ollama** with language models (llama3.2, etc.)
-   - **AWS Bedrock** with Claude or other models
-
-### Python Dependencies
-
-```bash
-pip install requests
-```
-
-For AWS Bedrock support:
-```bash
-pip install boto3
-```
+A Python package for importing Shodan JSON scan results into a Qdrant vector database and performing RAG (Retrieval-Augmented Generation) queries with configurable embedding and LLM backends. This tool enables semantic search and AI-powered analysis of network scan data by converting Shodan results into searchable vector embeddings.
 
 ## Installation
 
-1. Clone this repository:
+### From PyPI (when published)
+```bash
+pip install vector-and-llm
+```
+
+### From Source
 ```bash
 git clone https://github.com/BuildAndDestroy/ai-shodan-astra-vector-data.git
 cd ai-shodan-astra-vector-data
+pip install -e .
 ```
 
-2. Install dependencies:
+### With AWS Bedrock Support
 ```bash
-pip install -r requirements.txt
+pip install "vector-and-llm[bedrock]"
 ```
 
 ## Quick Start
@@ -82,297 +48,263 @@ ollama pull llama3.2         # For LLM responses
 ### 3. Import Shodan Data
 
 ```bash
-python shodan_to_qdrant.py --host 127.0.0.1 --port 6333 --ollama-host 127.0.0.1 --ollama-port 11434 --collection shodan_querytwo_electricboogaloo --embedding-backend ollama --ollama-model nomic-embed-text query_*.json
+shodan-to-qdrant --embedding-backend ollama --collection shodan_data *.json
 ```
 
 ### 4. Query with RAG
 
 ```bash
-python shodan_to_qdrant.py --host 127.0.0.1 --port 6333 --ollama-host 127.0.0.1 --ollama-port 11434 --collection shodan_querytwo_electricboogaloo --embedding-backend ollama --ollama-model nomic-embed-text -p "What SSH servers are running in Russia?" --top-k 2000
+llm-rag-shodan -p "What SSH servers are running in Russia?" --collection shodan_data --top-k 50
 ```
 
-## Usage
+## Command Line Tools
 
-### Basic Syntax
+After installation, two command-line tools are available:
 
-**Import Mode:**
+### `shodan-to-qdrant` - Import Tool
+
+Import Shodan JSON files into Qdrant:
+
 ```bash
-python3 shodan_rag.py [import_options] file1.json file2.json ...
+# Basic import with Ollama embeddings
+shodan-to-qdrant --embedding-backend ollama --collection my_scan *.json
+
+# Import with AWS Bedrock embeddings
+shodan-to-qdrant --embedding-backend bedrock --aws-region us-east-1 --collection my_scan *.json
+
+# Import with zero vectors (testing)
+shodan-to-qdrant --embedding-backend zero --vector-size 768 --collection test_scan scan.json
 ```
 
-**Query Mode:**
+**Key Options:**
+- `--embedding-backend`: Choose from `ollama`, `bedrock`, `zero`
+- `--collection`: Qdrant collection name
+- `--host/--port`: Qdrant connection details
+- `--ollama-host/--ollama-port`: Ollama connection details
+- `--aws-region`: AWS region for Bedrock
+
+### `llm-rag-shodan` - Query Tool
+
+Perform RAG queries on imported data:
+
 ```bash
-python3 shodan_rag.py -p "your question" [query_options]
-```
+# Basic query
+llm-rag-shodan -p "What services are running on port 22?" --collection my_scan
 
-### Import Examples
+# Multi-collection query
+llm-rag-shodan -p "Compare SSH versions across datasets" --collections scan1 scan2 scan3
 
-#### Basic Import with Ollama Embeddings
-```bash
-python3 shodan_rag.py --embedding-backend ollama -f scan_results.json
-```
-
-#### Import Multiple Files
-```bash
-python3 shodan_rag.py --embedding-backend ollama -f file1.json -f file2.json --file file3.json
-```
-
-#### AWS Bedrock Embeddings
-```bash
-python3 shodan_rag.py --embedding-backend bedrock --aws-region us-east-1 -f *.json
-```
-
-#### Custom Collection Name
-```bash
-python3 shodan_rag.py --embedding-backend ollama --collection my_scan_data -f scan.json
-```
-
-### RAG Query Examples
-
-#### Basic Security Analysis
-```bash
-# Find SSH servers
-python3 shodan_rag.py -p "What SSH servers are in this dataset?"
-
-# Geographic analysis
-python3 shodan_rag.py -p "What services are running in Russian Federation?" --top-k 50
-
-# Vulnerability hunting
-python3 shodan_rag.py -p "Find outdated Apache servers that might be vulnerable" --top-k 100
-
-# Service inventory
-python3 shodan_rag.py -p "List all unique services and their versions" --top-k 2000
-```
-
-#### Multi-Collection Queries
-```bash
-# Compare across datasets
-python3 shodan_rag.py -p "What are the differences between these scans?" --collections scan_january scan_february scan_march
-
-# Cross-dataset geographic analysis
-python3 shodan_rag.py -p "Which countries appear in all datasets?" --collections collection1 collection2 --top-k 100
-
-# Trend analysis
-python3 shodan_rag.py -p "How has the service landscape changed over time?" --collections old_scan new_scan --top-k 200
-```
-
-#### Advanced Queries with Different Backends
-```bash
-# Use AWS Bedrock LLM for analysis
-python3 shodan_rag.py -p "Provide a comprehensive security assessment" --llm-backend bedrock --top-k 100
+# High-precision query with more results
+llm-rag-shodan -p "Find vulnerable Apache servers" --top-k 100 --collection web_scan
 
 # Debug mode to see RAG pipeline
-python3 shodan_rag.py -p "Show me all services in Moscow" --debug --top-k 50
+llm-rag-shodan -p "Show services in Moscow" --debug --top-k 20 --collection geo_scan
 ```
 
-## Command Line Options
+**Key Options:**
+- `-p/--prompt`: Your question (required)
+- `--collection`: Single collection to search
+- `--collections`: Multiple collections to search
+- `--top-k`: Number of results to retrieve (default: 5)
+- `--llm-backend`: Choose from `ollama`, `bedrock`
+- `--debug`: Show detailed pipeline information
 
-### Core Options
-- `files`: Shodan JSON files to import (positional arguments)
-- `-f, --file`: Shodan JSON file to import (can be used multiple times)
-- `-p, --prompt`: Query prompt for RAG (instead of importing files)
-- `--host`: Qdrant host (default: `10.0.20.62`)
-- `--port`: Qdrant port (default: `6333`)
+## Python API
 
-### Collection Options
-- `--collection`: Single Qdrant collection name (default: `shodan_query`)
-- `--collections`: Multiple Qdrant collection names to search (overrides `--collection`)
+You can also use the package programmatically:
 
-### Embedding Backend Options
-- `--embedding-backend`: Choose from `zero`, `ollama`, `bedrock` (default: `ollama`)
-- `--vector-size`: Vector size for zero backend only (default: `384`)
+```python
+from vector_and_llm import (
+    OllamaEmbeddingBackend,
+    OllamaLLMBackend, 
+    QdrantClient
+)
+from vector_and_llm.tools.llm_rag_shodan import ShodanRAG
+from pathlib import Path
 
-### LLM Backend Options
-- `--llm-backend`: Choose from `ollama`, `bedrock` (default: `ollama`)
-- `--top-k`: Number of similar results to retrieve for RAG (default: `5`)
-- `--debug`: Enable debug output showing RAG pipeline details
+# Set up backends
+embedding_backend = OllamaEmbeddingBackend(host="localhost", port=11434)
+llm_backend = OllamaLLMBackend(host="localhost", port=11434)
 
-### Ollama Options
-- `--ollama-host`: Ollama host (default: `localhost`)
-- `--ollama-port`: Ollama port (default: `11434`)
-- `--ollama-embed-model`: Ollama embedding model (default: `nomic-embed-text`)
-- `--ollama-llm-model`: Ollama LLM model (default: `llama3.2`)
+# Create Qdrant client
+qdrant_client = QdrantClient(
+    host="localhost",
+    port=6333,
+    collection_names=["my_collection"],
+    embedding_backend=embedding_backend
+)
 
-### AWS Bedrock Options
-- `--aws-region`: AWS region (default: `us-east-1`)
-- `--aws-embed-model`: Bedrock embedding model ID (default: `amazon.titan-embed-text-v1`)
-- `--aws-llm-model`: Bedrock LLM model ID (default: `anthropic.claude-3-sonnet-20240229-v1:0`)
+# Import data
+file_paths = [Path("scan1.json"), Path("scan2.json")]
+qdrant_client.process_files(file_paths, "my_collection")
 
-## Shodan JSON Format
-
-The tool expects Shodan JSON files with the following structure:
-
-```json
-{
-  "matches": [
-    {
-      "ip_str": "192.168.1.1",
-      "port": 22,
-      "product": "OpenSSH",
-      "version": "7.4",
-      "timestamp": "2024-01-01T12:00:00.000000",
-      "location": {
-        "country_name": "Russian Federation",
-        "country_code": "RU",
-        "city": "Moscow"
-      },
-      "ssh": {
-        "type": "rsa"
-      },
-      "data": "SSH-2.0-OpenSSH_7.4..."
-    }
-  ]
-}
+# Query data
+rag_system = ShodanRAG(qdrant_client, llm_backend)
+response = rag_system.query("What SSH servers are in the dataset?", top_k=10)
+print(response)
 ```
 
-## RAG System Architecture
+## Features
 
-### How It Works
+- **RAG Query System**: Ask natural language questions about your network scan data
+- **Multiple LLM Backends**: Support for Ollama (local) and AWS Bedrock (cloud) language models  
+- **Multiple Embedding Backends**: Support for AWS Bedrock (Titan), Ollama (nomic-embed-text), and zero vectors
+- **Multi-Collection Support**: Query across multiple datasets simultaneously for comparative analysis
+- **Batch Processing**: Import multiple Shodan JSON files in a single run
+- **Automatic Collection Management**: Creates Qdrant collections with appropriate vector dimensions
+- **Enhanced Geographic Matching**: Intelligent country name variations for better location searches
+- **Debug Mode**: Comprehensive debugging with pipeline visibility
+- **Progress Tracking**: Real-time import progress with success/error counts
 
-1. **Import Phase:**
-   - Shodan JSON files are processed
-   - Key information is extracted and combined into embedding text
-   - Text is converted to vectors using the chosen embedding backend
-   - Vectors and metadata are stored in Qdrant collections
+## Supported Backends
 
-2. **Query Phase:**
-   - User question is converted to a query vector
-   - Similar vectors are retrieved from one or more collections
-   - Retrieved data is formatted as context
-   - Context + question is sent to the LLM for analysis
+### Embedding Backends
 
-### Embedding Text Generation
+| Backend | Model | Dimensions | Use Case |
+|---------|-------|------------|----------|
+| Ollama | nomic-embed-text | 768 | Local development, privacy |
+| AWS Bedrock | amazon.titan-embed-text-v1 | 1536 | Production, cloud |
+| Zero | Configurable | 384 (default) | Testing, development |
 
-The tool creates semantic embeddings by combining:
-- IP address and port information
-- Service name and version details
-- Geographic location with country variations
-- SSH key information (when available)
-- Banner data (truncated to 500 characters)
-- Enhanced country name matching for better geographic searches
+### LLM Backends
 
-Example embedding text:
-```
-IP: 192.168.1.1 | Port: 22 | Service: OpenSSH | Version: 7.4 | Country: Russian Federation | Location: Russia | Location: Russian Federation | Location: RU | City: Moscow | SSH Key Type: rsa | Banner: SSH-2.0-OpenSSH_7.4...
-```
-
-### Multi-Collection Support
-
-When querying multiple collections:
-- Each collection is searched in parallel
-- Results are combined and ranked by similarity score
-- Top-k results are selected globally across all collections
-- Results include dataset attribution for context
-
-## Vector Dimensions by Backend
-
-| Backend | Model | Dimensions |
-|---------|-------|------------|
-| Ollama | nomic-embed-text | 768 |
-| AWS Bedrock | amazon.titan-embed-text-v1 | 1536 |
-| Zero | Configurable | 384 (default) |
+| Backend | Default Model | Use Case |
+|---------|---------------|----------|
+| Ollama | llama3.2 | Local development, privacy |
+| AWS Bedrock | anthropic.claude-3-sonnet | Production, cloud |
 
 ## Example Workflows
 
-### Complete Workflow Example
+### Security Analysis Workflow
 
 ```bash
-# 1. Start services
-docker run -d -p 6333:6333 qdrant/qdrant
-ollama serve &
-ollama pull nomic-embed-text
-ollama pull llama3.2
+# 1. Import recent scans
+shodan-to-qdrant --embedding-backend ollama --collection recent_scan *.json
 
-# 2. Import multiple scan datasets
-python3 shodan_rag.py --embedding-backend ollama --collection january_scan -f january_*.json
-python3 shodan_rag.py --embedding-backend ollama --collection february_scan -f february_*.json
+# 2. Find SSH servers
+llm-rag-shodan -p "What SSH servers are exposed?" --collection recent_scan --top-k 50
 
-# 3. Query single dataset
-python3 shodan_rag.py -p "What are the most common services?" --collection january_scan --top-k 100
+# 3. Geographic analysis  
+llm-rag-shodan -p "Which countries have the most exposed services?" --collection recent_scan --top-k 100
 
-# 4. Compare across datasets
-python3 shodan_rag.py -p "How did the service landscape change from January to February?" --collections january_scan february_scan --top-k 200
-
-# 5. Geographic analysis
-python3 shodan_rag.py -p "What countries have the most SSH servers?" --collections january_scan february_scan --top-k 500
+# 4. Vulnerability assessment
+llm-rag-shodan -p "Find outdated services that might be vulnerable" --collection recent_scan --top-k 200
 ```
+
+### Comparative Analysis Workflow
+
+```bash
+# 1. Import multiple time periods
+shodan-to-qdrant --embedding-backend ollama --collection jan_2024 january_*.json
+shodan-to-qdrant --embedding-backend ollama --collection feb_2024 february_*.json
+
+# 2. Compare across time periods
+llm-rag-shodan -p "How has the service landscape changed?" --collections jan_2024 feb_2024 --top-k 100
+
+# 3. Track specific services
+llm-rag-shodan -p "How have Apache versions changed over time?" --collections jan_2024 feb_2024 --top-k 150
+```
+
+## Configuration
+
+### Environment Variables
+
+You can set default values using environment variables:
+
+```bash
+export QDRANT_HOST=localhost
+export QDRANT_PORT=6333
+export OLLAMA_HOST=localhost  
+export OLLAMA_PORT=11434
+export AWS_DEFAULT_REGION=us-east-1
+```
+
+### AWS Bedrock Setup
+
+For AWS Bedrock support:
+
+1. Install boto3: `pip install boto3`
+2. Configure AWS credentials: `aws configure`
+3. Ensure you have access to the required Bedrock models
 
 ## Troubleshooting
 
 ### Common Issues
 
-**LLM Connection Issues**
+**Connection Errors**
 ```
 ✗ Error generating response: Connection refused
 ```
-- Ensure Ollama is running: `ollama serve`
-- Verify the LLM model is available: `ollama list`
-- Check host/port configuration
+- Ensure Ollama/Qdrant services are running
+- Check host/port configurations
+- Verify firewall settings
 
-**Embedding Generation Issues**
+**Model Not Found**
 ```
 ✗ Ollama embedding error: 404 Client Error
 ```
-- Ensure embedding model is pulled: `ollama pull nomic-embed-text`
-- Verify Ollama is accessible at specified host:port
-- Check that embedding and LLM hosts are configured correctly
+- Pull required models: `ollama pull nomic-embed-text`
+- Check model names in configuration
 
 **Low Quality Results**
-```
-Results have low similarity scores or irrelevant content
-```
-- Try increasing `--top-k` for broader search results
+- Increase `--top-k` for broader search
 - Use more specific queries
-- Consider re-importing with enhanced embeddings
-- Use debug mode to examine the RAG pipeline: `--debug`
-
-**Multi-Collection Issues**
-```
-⚠️ Collection 'collection_name' returned status 404
-```
-- Verify collection names exist: check Qdrant dashboard
-- Ensure collections were created with compatible vector dimensions
-- Check collection spelling and case sensitivity
+- Enable debug mode to examine pipeline: `--debug`
 
 ### Debug Mode
 
-Enable comprehensive debugging:
+Enable detailed logging:
 ```bash
-python3 shodan_rag.py -p "your query" --debug --top-k 10
+llm-rag-shodan -p "your query" --debug --top-k 10
 ```
 
 Debug output includes:
 - Query vector details
-- Search results from each collection
+- Search results from each collection  
 - Similarity scores
 - Formatted context sent to LLM
-- Collection attribution
 
-### Performance Tips
+## Development
 
-- **Optimal top-k values:**
-  - Small datasets: 10-50
-  - Medium datasets: 50-200
-  - Large datasets or broad queries: 200-2000+
-- **Geographic queries:** Use higher top-k values (100+) for comprehensive location analysis
-- **Comparative analysis:** Use multiple collections with moderate top-k (50-200)
-- **Service inventory:** Use very high top-k (1000+) to capture all unique services
+### Setting up Development Environment
 
-## AWS Bedrock Setup
-
-### Prerequisites
 ```bash
-pip install boto3
-aws configure  # Set up credentials
+git clone https://github.com/BuildAndDestroy/ai-shodan-astra-vector-data.git
+cd ai-shodan-astra-vector-data
+
+# Install in development mode
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Format code  
+black vector_and_llm/
+
+# Lint code
+flake8 vector_and_llm/
 ```
 
-### Usage with Bedrock
-```bash
-# Import with Bedrock embeddings
-python3 shodan_rag.py --embedding-backend bedrock --aws-region us-east-1 -f scan.json
+### Package Structure
 
-# Query with Bedrock LLM
-python3 shodan_rag.py -p "Analyze security posture" --llm-backend bedrock --aws-region us-east-1
+```
+vector_and_llm/
+├── lib/
+│   ├── embedding/          # Embedding backends
+│   │   ├── base.py
+│   │   ├── ollama.py
+│   │   ├── bedrock.py
+│   │   └── zero.py
+│   ├── llm/               # LLM backends  
+│   │   ├── base.py
+│   │   ├── ollama.py
+│   │   └── bedrock.py
+│   └── qdrant/            # Qdrant client
+│       ├── client.py
+│       └── utils.py
+└── tools/                 # Command-line tools
+    ├── shodan_to_qdrant.py
+    └── llm_rag_shodan.py
 ```
 
 ## Contributing
@@ -381,30 +313,17 @@ python3 shodan_rag.py -p "Analyze security posture" --llm-backend bedrock --aws-
 2. Create a feature branch: `git checkout -b feature-name`
 3. Make your changes and add tests
 4. Commit: `git commit -am 'Add feature'`
-5. Push: `git push origin feature-name`
+5. Push: `git push origin feature-name`  
 6. Create a Pull Request
 
 ## License
 
-This project is licensed under the GNU GENERAL PUBLIC LICENSE - see the LICENSE file for details.
-
-## Support
-
-- **Issues**: Report bugs and request features via GitHub Issues
-- **Documentation**: Check the code comments for implementation details
-- **Community**: Discussions welcome in GitHub Discussions
-
+This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.
 
 ## Related Projects
 
-- [ai-shodan-astra-scan](https://github.com/BuildAndDestroy/ai-shodan-astra-scan) - Scan shodan to get data
+- [ai-shodan-astra-scan](https://github.com/BuildAndDestroy/ai-shodan-astra-scan) - Scan Shodan to get data
 - [Qdrant](https://qdrant.tech/) - Vector database
 - [Ollama](https://ollama.ai/) - Local LLM and embedding server
 - [Shodan](https://www.shodan.io/) - Internet device search engine
 - [AWS Bedrock](https://aws.amazon.com/bedrock/) - Managed AI service
-
-
-## Next Steps
-
-* Build this out into a full package for os install
-* Update the Dockerfile to mount directory for data input
