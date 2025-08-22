@@ -6,7 +6,7 @@ A Python package for importing Shodan JSON scan results into a Qdrant vector dat
 
 ### From PyPI (when published)
 ```bash
-pip install vector-and-llm
+pip install ai-shodan-astra-vector-data
 ```
 
 ### From Source
@@ -18,7 +18,7 @@ pip install -e .
 
 ### With AWS Bedrock Support
 ```bash
-pip install "vector-and-llm[bedrock]"
+pip install "ai-shodan-astra-vector-data[bedrock]"
 ```
 
 ## Quick Start
