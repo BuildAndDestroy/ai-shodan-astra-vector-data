@@ -3,8 +3,8 @@
 Tool for performing RAG queries on Shodan data stored in Qdrant.
 
 Usage:
-    llm-rag-shodan -p "What SSH servers are running in the US?" [options]
-    python -m vector_and_llm.tools.llm_rag_shodan -p "Show me vulnerable Apache servers" [options]
+    llm-rag-shodan -p "What SSH servers are running in the US?" --timeout 300 [options]
+    python -m vector_and_llm.tools.llm_rag_shodan -p "Show me vulnerable Apache servers" --timeout 180 [options]
 """
 
 import argparse
@@ -42,7 +42,7 @@ class ShodanRAG:
             print(f"📄 Generated context with {len(similar_results)} results")
         
         # Step 3: Generate response
-        print(f"💭 Generating response using LLM...")
+        print(f"💭 Generating response using LLM... (timeout: {getattr(self.llm_backend, 'timeout', 'default')}s)...")
         response = self.llm_backend.generate_response(prompt, context)
         
         print(f"✅ RAG query complete")
@@ -73,7 +73,8 @@ def create_llm_backend(args):
         return OllamaLLMBackend(
             host=args.ollama_host,
             port=args.ollama_port,
-            model=args.ollama_llm_model
+            model=args.ollama_llm_model,
+            timeout=args.timeout
         )
     elif args.llm_backend == "bedrock":
         return BedrockLLMBackend(
@@ -88,17 +89,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Basic query
-  llm-rag-shodan -p "What SSH servers are running in the US?" --collection my_collection
+  # Basic query with custom timeout
+  llm-rag-shodan -p "What SSH servers are running in the US?" --collection my_collection --timeout 300
   
-  # Query multiple collections
-  llm-rag-shodan -p "Compare SSH servers across datasets" --collections collection1 collection2 collection3
+  # Query multiple collections with extended timeout
+  llm-rag-shodan -p "Compare SSH servers across datasets" --collections collection1 collection2 --timeout 600
   
-  # Query with AWS Bedrock LLM
+  # Query with AWS Bedrock LLM (timeout doesn't apply to Bedrock)
   llm-rag-shodan -p "Show me vulnerable Apache servers" --llm-backend bedrock --collections scan1 scan2
   
-  # Debug mode
-  llm-rag-shodan -p "Show me all services in Moscow" --debug --top-k 50
+  # Debug mode with custom timeout
+  llm-rag-shodan -p "Show me all services in Moscow" --debug --top-k 50 --timeout 180
         """
     )
     
@@ -148,7 +149,15 @@ Examples:
         action="store_true",
         help="Enable debug output showing RAG pipeline details"
     )
-    
+
+    # Timeout option
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=120,
+        help="Timeout in seconds for LLM requests (Ollama only, default: 120)"
+    )
+
     # Embedding options
     parser.add_argument(
         "--embedding-backend",
@@ -240,6 +249,8 @@ Examples:
     print(f"🔧 Using LLM backend: {llm_backend.__class__.__name__}")
     print(f"🔧 Vector size: {embedding_backend.get_vector_size()}")
     print(f"🔧 Collections: {', '.join(collection_names)}")
+    if args.llm_backend == "ollama":
+        print(f"🔧 LLM timeout: {args.timeout} seconds")
     
     # Create RAG system
     rag_system = ShodanRAG(qdrant_client, llm_backend)
