@@ -21,6 +21,25 @@ pip install -e .
 pip install "ai-shodan-astra-vector-data[bedrock]"
 ```
 
+### Qdrant MCP Server
+
+```
+source ~/development/virtual_env/ai-shodan-vector-data/bin/activate
+
+pip install mcp qdrant-client
+
+python shodan_mcp_server.py
+```
+
+### Cursor MCP Server
+
+```
+{"mcpServers":{"MCP_DOCKER":{"command":"docker","args":["mcp","gateway","run"]},"MCP_SHODAN":{"command": "/home/YOURUSERNAME/development/virtual_env/ai-shodan-vector-data/bin/python","args": ["/home/YOURUSERNAME/development/git/ai-shodan-astra-vector-data/shodan_mcp_server.py"]}}}
+```
+
+* Query within Cursor to use the MCP server
+
+
 ## Quick Start
 
 ### 1. Set up Qdrant
