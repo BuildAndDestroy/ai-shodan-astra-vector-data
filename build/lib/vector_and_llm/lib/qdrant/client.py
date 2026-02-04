@@ -12,7 +12,7 @@ from typing import Dict, List, Any, Tuple, Optional
 
 from ..embedding.base import EmbeddingBackend
 from ..llm.base import LLMBackend
-from .utils import create_embedding_text, format_search_results, detect_location_from_query, filter_results_by_location
+from .utils import create_embedding_text, format_search_results
 
 
 class QdrantClient:
@@ -133,51 +133,16 @@ class QdrantClient:
             return False, f"Request error: {e}"
     
     def search_similar(self, query: str, top_k: int = 5, debug: bool = False, collection_names: List[str] = None) -> List[Dict[str, Any]]:
-        """Search for similar vectors across collections with optional location filtering."""
+        """Search for similar vectors across collections."""
         if collection_names is None:
             collection_names = self.collection_names
-        
-        # Detect location preferences from query
-        target_locations = detect_location_from_query(query)
-        if debug and target_locations:
-            print(f"🌍 DEBUG: Detected location preferences in query: {target_locations}")
-        
-        # If location is detected, retrieve more results to find matching ones
-        # This is because semantic search might not rank location matches highly
-        search_k = top_k
-        if target_locations:
-            search_k = max(top_k * 10, 100)  # Get 10x more results for filtering
-            if debug:
-                print(f"🌍 DEBUG: Retrieving {search_k} results for location-based filtering")
             
-        # Build payload filter for Qdrant if target locations detected
-        payload_filter = None
-        if target_locations:
-            should_clauses = []
-            for loc in target_locations:
-                should_clauses.append({
-                    "key": "location.country_name",
-                    "match": {"value": loc}
-                })
-            payload_filter = {"should": should_clauses}
-
         if len(collection_names) == 1:
-            results = self._search_single_collection(query, search_k, debug, collection_names[0], payload_filter=payload_filter)
+            return self._search_single_collection(query, top_k, debug, collection_names[0])
         else:
-            results = self._search_multi_collection(query, search_k, debug, collection_names, payload_filter=payload_filter)
-        
-        # Apply location filtering if locations were detected in query
-        if target_locations:
-            filtered_results = filter_results_by_location(results, target_locations)
-            if debug:
-                matching = len([r for r in filtered_results if r.get('payload', {}).get('location', {}).get('country_name') in target_locations])
-                print(f"🌍 DEBUG: Location filtering: {matching} matching results from {len(results)} total")
-            # Trim to requested top_k
-            results = filtered_results[:top_k]
-        
-        return results
+            return self._search_multi_collection(query, top_k, debug, collection_names)
     
-    def _search_single_collection(self, query: str, top_k: int = 5, debug: bool = False, collection_name: str = None, payload_filter: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def _search_single_collection(self, query: str, top_k: int = 5, debug: bool = False, collection_name: str = None) -> List[Dict[str, Any]]:
         """Search for similar vectors in a single Qdrant collection."""
         if collection_name is None:
             collection_name = self.collection_names[0]
@@ -208,8 +173,6 @@ class QdrantClient:
             "limit": top_k,
             "with_payload": True
         }
-        if payload_filter:
-            search_payload["filter"] = payload_filter
         
         try:
             print(f"🔍 Searching Qdrant collection '{collection_name}' for {top_k} most similar results...")
@@ -248,7 +211,7 @@ class QdrantClient:
             print(f"✗ Error searching Qdrant: {e}")
             return []
     
-    def _search_multi_collection(self, query: str, top_k: int = 5, debug: bool = False, collection_names: List[str] = None, payload_filter: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def _search_multi_collection(self, query: str, top_k: int = 5, debug: bool = False, collection_names: List[str] = None) -> List[Dict[str, Any]]:
         """Search for similar vectors across multiple collections."""
         if collection_names is None:
             collection_names = self.collection_names
@@ -285,8 +248,6 @@ class QdrantClient:
                 "limit": top_k,
                 "with_payload": True
             }
-            if payload_filter:
-                search_payload["filter"] = payload_filter
             
             try:
                 response = self.session.post(
@@ -343,11 +304,7 @@ class QdrantClient:
             print(f"✗ Error reading {file_path}: {e}")
             return 0, 0
         
-        # Handle both "matches" and "all_matches" keys
         matches = data.get("matches", [])
-        if not matches:
-            matches = data.get("all_matches", [])
-        
         if not matches:
             print(f"⚠️  No matches found in {file_path}")
             return 0, 0

@@ -283,6 +283,29 @@ Debug output includes:
 - Similarity scores
 - Formatted context sent to LLM
 
+### Hybrid (Location-aware) Search
+
+When a user query contains explicit geographic keywords (for example `United States`, `US`, `Russia`, `Moscow`), the tool now performs a hybrid search:
+
+- It detects location mentions in the natural-language query.
+- It applies a Qdrant payload filter for the detected location(s) to restrict candidates.
+- It runs the vector similarity search inside that filtered set and returns the most relevant results.
+
+This improves precision for geographic queries where exact country/city matching is required while retaining semantic matching for service/version details.
+
+Example (location-aware):
+```bash
+llm-rag-shodan -p "Show me SSH servers in United States" --collection shodan_data --top-k 50 --debug
+```
+
+If you prefer strict payload-only filtering (no semantic ranking), use a direct Qdrant filter with `curl`:
+
+```bash
+curl -sS -X POST 'http://<QDRANT_HOST>:6333/collections/<COLLECTION>/points/search' \
+    -H 'Content-Type: application/json' \
+    -d '{"filter":{"must":[{"key":"location.country_name","match":{"value":"United States"}}]},"limit":200,"with_payload":true}' | jq '.result | length'
+```
+
 ## Development
 
 ### Setting up Development Environment
